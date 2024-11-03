@@ -224,7 +224,7 @@ export default function LiquidationCalculatorPage() {
                   checked={useLivePrice}
                   onChange={(e) => handleCheckboxChange(e.target.checked)}
                 />
-                <label htmlFor="useLivePrice" className="text-orange-500">
+                <label htmlFor="useLivePrice" className="text-amber-800">
                   Use Live BTC Price
                 </label>
               </div>
@@ -278,7 +278,10 @@ export default function LiquidationCalculatorPage() {
               {error && <p className="text-red-500">{error}</p>}
               <Button type="submit">Calculate</Button>
               {result && (
-                <p className="text-green-500">Liquidation Price: ${result}</p>
+                <p className="text-green-500">
+                  Liquidation Price:{" "}
+                  <span className="font-bold">${result}</span>
+                </p>
               )}
             </form>
           </CardContent>
@@ -302,7 +305,13 @@ export default function LiquidationCalculatorPage() {
         </p>
       </footer>
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
+        <DialogContent
+          className={`text-center p-4 bg-background text-foreground ${
+            theme === "dark"
+              ? "bg-slate-800 text-white"
+              : "bg-stone-400 text-black"
+          }`}
+        >
           <DialogHeader>
             <DialogTitle>BTC Price Chart</DialogTitle>
             <DialogDescription>
