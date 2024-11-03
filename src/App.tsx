@@ -40,17 +40,26 @@ interface BTCPriceChartProps {
   data: { time: string; price: number }[];
 }
 
-const BTCPriceChart = ({ data }: BTCPriceChartProps) => (
-  <ResponsiveContainer width="100%" height={300}>
-    <LineChart data={data}>
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="time" />
-      <YAxis />
-      <Tooltip />
-      <Line type="monotone" dataKey="price" stroke="#8884d8" />
-    </LineChart>
-  </ResponsiveContainer>
-);
+const BTCPriceChart = ({ data }: BTCPriceChartProps) => {
+  // Get the current price from the data (last data point)
+  const currentPrice = data.length > 0 ? data[data.length - 1].price : 0;
+
+  // Calculate the y-axis domain based on the current price
+  const lowerBound = Math.max(0, currentPrice - 75);
+  const upperBound = currentPrice;
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="time" />
+        <YAxis domain={[lowerBound, upperBound]} />
+        <Tooltip />
+        <Line type="monotone" dataKey="price" stroke="#8884d8" />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+};
 
 export default function Component() {
   const [entryPrice, setEntryPrice] = useState("");
@@ -91,7 +100,7 @@ export default function Component() {
           ? prevData[prevData.length - 1].price
           : livePrice;
         const simulatedPrice = parseFloat(
-          (lastPrice + (Math.random() - 0.5) * 100).toFixed(2)
+          (lastPrice + (Math.random() - 0.5) * 100).toFixed(1)
         ); // Simulate price changes
 
         return [
@@ -152,99 +161,103 @@ export default function Component() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Liquidation Price Calculator</CardTitle>
-        <CardDescription>
-          Calculate the liquidation price for your position
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            calculateLiquidationPrice();
-          }}
-          className="space-y-4"
-        >
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="useLivePrice"
-              className="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              checked={useLivePrice}
-              onChange={(e) => handleCheckboxChange(e.target.checked)}
-            />
-            <label htmlFor="useLivePrice" className="text-gray-700">
-              Use Live BTC Price
-            </label>
-          </div>
-          {/* BTC Price Input Section */}
-          <div>
-            <Label
-              className={`space-y-2 ${isBTCPriceVisible ? "block" : "hidden"}`}
-              id="text(BTCPrice)"
-              htmlFor="entryPrice"
-            >
-              Entry Price (USD)
-            </Label>
-            <Input
-              id="entryPrice"
-              type="number"
-              placeholder="Enter price"
-              value={entryPrice}
-              onChange={(e) => setEntryPrice(e.target.value)}
-              disabled={useLivePrice}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="leverage">Leverage</Label>
-            <Input
-              id="leverage"
-              type="number"
-              placeholder="Enter leverage"
-              value={leverage}
-              onChange={(e) => setLeverage(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="positionType">Position Type</Label>
-            <Select value={positionType} onValueChange={setPositionType}>
-              <SelectTrigger id="positionType">
-                <SelectValue placeholder="Select position type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="long">Long</SelectItem>
-                <SelectItem value="short">Short</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button type="submit" className="w-full">
-            Calculate Liquidation Price
-          </Button>
-        </form>
-        {error && <p className="mt-4 text-red-500">{error}</p>}
-        {result !== null && (
-          <div className="mt-4 p-4 bg-green-100 rounded-md">
-            <p className="text-green-800">Liquidation Price: ${result}</p>
-          </div>
-        )}
-      </CardContent>
+    <>
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>Liquidation Price Calculator</CardTitle>
+          <CardDescription>
+            Calculate the liquidation price for your position
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              calculateLiquidationPrice();
+            }}
+            className="space-y-4"
+          >
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="useLivePrice"
+                className="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                checked={useLivePrice}
+                onChange={(e) => handleCheckboxChange(e.target.checked)}
+              />
+              <label htmlFor="useLivePrice" className="text-gray-700">
+                Use Live BTC Price
+              </label>
+            </div>
+            {/* BTC Price Input Section */}
+            <div>
+              <Label
+                className={`space-y-2 ${
+                  isBTCPriceVisible ? "block" : "hidden"
+                }`}
+                id="text(BTCPrice)"
+                htmlFor="entryPrice"
+              >
+                Entry Price (USD)
+              </Label>
+              <Input
+                id="entryPrice"
+                type="number"
+                placeholder="Enter price"
+                value={entryPrice}
+                onChange={(e) => setEntryPrice(e.target.value)}
+                disabled={useLivePrice}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="leverage">Leverage</Label>
+              <Input
+                id="leverage"
+                type="number"
+                placeholder="Enter leverage"
+                value={leverage}
+                onChange={(e) => setLeverage(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="positionType">Position Type</Label>
+              <Select value={positionType} onValueChange={setPositionType}>
+                <SelectTrigger id="positionType">
+                  <SelectValue placeholder="Select position type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="long">Long</SelectItem>
+                  <SelectItem value="short">Short</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" className="w-full">
+              Calculate Liquidation Price
+            </Button>
+          </form>
+          {error && <p className="mt-4 text-red-500">{error}</p>}
+          {result !== null && (
+            <div className="mt-4 p-4 bg-green-100 rounded-md">
+              <p className="text-green-800">Liquidation Price: ${result}</p>
+            </div>
+          )}
+        </CardContent>
 
-      {/* Modal for BTC Price Chart */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Live BTC Price Chart</DialogTitle>
-            <DialogDescription>
-              Real-time BTC price updates every 5 seconds
-            </DialogDescription>
-          </DialogHeader>
-          <BTCPriceChart data={btcPriceData} />
-        </DialogContent>
-      </Dialog>
-    </Card>
+        {/* Modal for BTC Price Chart */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Live BTC Price Chart</DialogTitle>
+              <DialogDescription>
+                Real-time BTC price updates every 5 seconds
+              </DialogDescription>
+            </DialogHeader>
+            <BTCPriceChart data={btcPriceData} />
+          </DialogContent>
+        </Dialog>
+      </Card>
+    </>
   );
 }
