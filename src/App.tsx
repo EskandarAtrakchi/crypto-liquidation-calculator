@@ -32,7 +32,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Moon, Sun } from "lucide-react";
+import { Header } from "./components/Header";
+
 
 // Existing BTCPriceChart component
 interface BTCPriceChartProps {
@@ -57,24 +58,6 @@ const BTCPriceChart = ({ data }: BTCPriceChartProps) => {
   );
 };
 
-// New Header component
-interface HeaderProps {
-  toggleTheme: () => void;
-  theme: string;
-}
-
-const Header = ({ toggleTheme, theme }: HeaderProps) => (
-  <header className="flex justify-between items-center p-4 bg-background text-foreground">
-    <h1 className="text-2xl font-bold">Liquidation Calculator</h1>
-    <Button variant="outline" size="icon" onClick={toggleTheme}>
-      {theme === "dark" ? (
-        <Sun className="h-[1.2rem] w-[1.2rem]" />
-      ) : (
-        <Moon className="h-[1.2rem] w-[1.2rem]" />
-      )}
-    </Button>
-  </header>
-);
 
 // Main component
 export default function LiquidationCalculatorPage() {
@@ -209,8 +192,8 @@ export default function LiquidationCalculatorPage() {
         <Card
           className={`${
             theme === "dark"
-              ? "bg-slate-800 text-white"
-              : "bg-slate-200 text-black"
+              ? "bg-slate-900 text-white"
+              : "bg-slate-300 text-black"
           }`}
         >
           <CardHeader>
@@ -222,8 +205,8 @@ export default function LiquidationCalculatorPage() {
           <CardContent
             className={`${
               theme === "dark"
-                ? "bg-slate-800 text-white"
-                : "bg-slate-200 text-black"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-300 text-black"
             }`}
           >
             <form
@@ -241,7 +224,7 @@ export default function LiquidationCalculatorPage() {
                   checked={useLivePrice}
                   onChange={(e) => handleCheckboxChange(e.target.checked)}
                 />
-                <label htmlFor="useLivePrice" className="text-foreground">
+                <label htmlFor="useLivePrice" className="text-orange-500">
                   Use Live BTC Price
                 </label>
               </div>
@@ -306,7 +289,7 @@ export default function LiquidationCalculatorPage() {
         className={`text-center p-4 bg-background text-foreground ${
           theme === "dark"
             ? "bg-slate-800 text-white"
-            : "bg-slate-200 text-black"
+            : "bg-slate-300 text-black"
         }`}
       >
         <p>
