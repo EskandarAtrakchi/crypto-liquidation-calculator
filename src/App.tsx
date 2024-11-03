@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,17 +32,15 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { Moon, Sun } from "lucide-react";
 
-// New component for BTC price chart
+// Existing BTCPriceChart component
 interface BTCPriceChartProps {
   data: { time: string; price: number }[];
 }
 
 const BTCPriceChart = ({ data }: BTCPriceChartProps) => {
-  // Get the current price from the data (last data point)
   const currentPrice = data.length > 0 ? data[data.length - 1].price : 0;
-
-  // Calculate the y-axis domain based on the current price
   const lowerBound = Math.max(0, currentPrice - 75);
   const upperBound = currentPrice;
 
@@ -61,7 +57,28 @@ const BTCPriceChart = ({ data }: BTCPriceChartProps) => {
   );
 };
 
-export default function Component() {
+// New Header component
+interface HeaderProps {
+  toggleTheme: () => void;
+  theme: string;
+}
+
+const Header = ({ toggleTheme, theme }: HeaderProps) => (
+  <header className="flex justify-between items-center p-4 bg-background text-foreground">
+    <h1 className="text-2xl font-bold">Liquidation Calculator</h1>
+    <Button variant="outline" size="icon" onClick={toggleTheme}>
+      {theme === "dark" ? (
+        <Sun className="h-[1.2rem] w-[1.2rem]" />
+      ) : (
+        <Moon className="h-[1.2rem] w-[1.2rem]" />
+      )}
+    </Button>
+  </header>
+);
+
+// Main component
+export default function LiquidationCalculatorPage() {
+  const [theme, setTheme] = useState("light");
   const [entryPrice, setEntryPrice] = useState("");
   const [leverage, setLeverage] = useState("");
   const [positionType, setPositionType] = useState("long");
@@ -74,7 +91,7 @@ export default function Component() {
     { time: string; price: number }[]
   >([]);
 
-  const apiKey = import.meta.env.VITE_API_KEY;
+  const apiKey = import.meta.env.VITE_API_KEY; // Using Vite's environment variable convention
 
   const fetchBTCPrice = async () => {
     try {
@@ -95,27 +112,29 @@ export default function Component() {
 
       // Simulate historical price data
       setBtcPriceData((prevData) => {
-        // Generate a new price based on the last price
         const lastPrice = prevData.length
           ? prevData[prevData.length - 1].price
           : livePrice;
         const simulatedPrice = parseFloat(
           (lastPrice + (Math.random() - 0.5) * 100).toFixed(1)
-        ); // Simulate price changes
+        );
 
         return [
           ...prevData,
           { time: new Date().toLocaleTimeString(), price: simulatedPrice },
-        ].slice(-10); // Keep only the last 10 data points
+        ].slice(-10);
       });
     } catch (err) {
       setError("Failed to fetch live BTC price.");
+      alert(
+        "Failed to fetch live BTC price! API out of credits. Please wait for refill or use static price"
+      );
     }
   };
 
   useEffect(() => {
     if (useLivePrice) {
-      const interval = setInterval(fetchBTCPrice, 5000); // Fetch every 5 seconds
+      const interval = setInterval(fetchBTCPrice, 5000);
       return () => clearInterval(interval);
     }
   }, [useLivePrice]);
@@ -125,19 +144,25 @@ export default function Component() {
     if (checked) {
       fetchBTCPrice();
       setIsBTCPriceVisible(false);
-      setIsModalOpen(true); // Open the modal when checkbox is checked
+      setIsModalOpen(true);
     } else {
       setEntryPrice("");
       setIsBTCPriceVisible(true);
-      setIsModalOpen(false); // Close the modal when checkbox is unchecked
+      setIsModalOpen(false);
     }
+  };
+
+  const handleModalOpen = () => {
+    setIsModalOpen(true);
   };
 
   const calculateLiquidationPrice = () => {
     setError("");
     setResult(null);
 
-    const entryPriceNum = parseFloat(entryPrice);
+    const entryPriceNum = useLivePrice
+      ? parseFloat(entryPrice)
+      : parseFloat(entryPrice);
     const leverageNum = parseFloat(leverage);
 
     if (isNaN(entryPriceNum) || isNaN(leverageNum)) {
@@ -160,104 +185,150 @@ export default function Component() {
     setResult(parseFloat(liquidationPrice.toFixed(2)));
   };
 
-  return (
-    <>
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle>Liquidation Price Calculator</CardTitle>
-          <CardDescription>
-            Calculate the liquidation price for your position
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              calculateLiquidationPrice();
-            }}
-            className="space-y-4"
-          >
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="useLivePrice"
-                className="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                checked={useLivePrice}
-                onChange={(e) => handleCheckboxChange(e.target.checked)}
-              />
-              <label htmlFor="useLivePrice" className="text-gray-700">
-                Use Live BTC Price
-              </label>
-            </div>
-            {/* BTC Price Input Section */}
-            <div>
-              <Label
-                className={`space-y-2 ${
-                  isBTCPriceVisible ? "block" : "hidden"
-                }`}
-                id="text(BTCPrice)"
-                htmlFor="entryPrice"
-              >
-                Entry Price (USD)
-              </Label>
-              <Input
-                id="entryPrice"
-                type="number"
-                placeholder="Enter price"
-                value={entryPrice}
-                onChange={(e) => setEntryPrice(e.target.value)}
-                disabled={useLivePrice}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="leverage">Leverage</Label>
-              <Input
-                id="leverage"
-                type="number"
-                placeholder="Enter leverage"
-                value={leverage}
-                onChange={(e) => setLeverage(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="positionType">Position Type</Label>
-              <Select value={positionType} onValueChange={setPositionType}>
-                <SelectTrigger id="positionType">
-                  <SelectValue placeholder="Select position type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="long">Long</SelectItem>
-                  <SelectItem value="short">Short</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" className="w-full">
-              Calculate Liquidation Price
-            </Button>
-          </form>
-          {error && <p className="mt-4 text-red-500">{error}</p>}
-          {result !== null && (
-            <div className="mt-4 p-4 bg-green-100 rounded-md">
-              <p className="text-green-800">Liquidation Price: ${result}</p>
-            </div>
-          )}
-        </CardContent>
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme); // Save theme to local storage
+  };
 
-        {/* Modal for BTC Price Chart */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Live BTC Price Chart</DialogTitle>
-              <DialogDescription>
-                Real-time BTC price updates every 5 seconds
-              </DialogDescription>
-            </DialogHeader>
-            <BTCPriceChart data={btcPriceData} />
-          </DialogContent>
-        </Dialog>
-      </Card>
-    </>
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      setTheme(savedTheme);
+    }
+  }, []);
+
+  return (
+    <div
+      className={`min-h-screen flex flex-col ${
+        theme === "dark" ? "bg-slate-800 text-white" : "bg-slate-200 text-black"
+      }`}
+    >
+      <Header toggleTheme={toggleTheme} theme={theme} />
+      <main className="flex-grow flex items-center justify-center p-4">
+        <Card
+          className={`${
+            theme === "dark"
+              ? "bg-slate-800 text-white"
+              : "bg-slate-200 text-black"
+          }`}
+        >
+          <CardHeader>
+            <CardTitle>Liquidation Price Calculator</CardTitle>
+            <CardDescription>
+              Calculate the liquidation price for your position
+            </CardDescription>
+          </CardHeader>
+          <CardContent
+            className={`${
+              theme === "dark"
+                ? "bg-slate-800 text-white"
+                : "bg-slate-200 text-black"
+            }`}
+          >
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                calculateLiquidationPrice();
+              }}
+              className="space-y-4"
+            >
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="useLivePrice"
+                  className="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  checked={useLivePrice}
+                  onChange={(e) => handleCheckboxChange(e.target.checked)}
+                />
+                <label htmlFor="useLivePrice" className="text-foreground">
+                  Use Live BTC Price
+                </label>
+              </div>
+              {useLivePrice && (
+                <Button onClick={handleModalOpen} className="mt-2">
+                  View BTC Price Chart
+                </Button>
+              )}
+              <div>
+                <Label
+                  className={`space-y-2 ${
+                    isBTCPriceVisible ? "block" : "hidden"
+                  }`}
+                  htmlFor="entryPrice"
+                >
+                  Entry Price (USD)
+                </Label>
+                <Input
+                  id="entryPrice"
+                  type="number"
+                  placeholder="Enter price"
+                  value={entryPrice}
+                  onChange={(e) => setEntryPrice(e.target.value)}
+                  disabled={useLivePrice}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="leverage">Leverage</Label>
+                <Input
+                  id="leverage"
+                  type="number"
+                  placeholder="Enter leverage"
+                  value={leverage}
+                  onChange={(e) => setLeverage(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="positionType">Position Type</Label>
+                <Select value={positionType} onValueChange={setPositionType}>
+                  <SelectTrigger id="positionType">
+                    <SelectValue placeholder="Select position type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="long">Long</SelectItem>
+                    <SelectItem value="short">Short</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {error && <p className="text-red-500">{error}</p>}
+              <Button type="submit">Calculate</Button>
+              {result && (
+                <p className="text-green-500">Liquidation Price: ${result}</p>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+      </main>
+      <hr></hr>
+      <footer
+        className={`text-center p-4 bg-background text-foreground ${
+          theme === "dark"
+            ? "bg-slate-800 text-white"
+            : "bg-slate-200 text-black"
+        }`}
+      >
+        <p>
+          This project is public by{" "}
+          <a href="https://github.com/EskandarAtrakchi/crypto-liquidation-calc">
+            {" "}
+            Eskandar Atrakchi. Feel free to use the code and modify it as you
+            wish. ٩(｡•́‿•̀｡)۶
+          </a>
+        </p>
+      </footer>
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>BTC Price Chart</DialogTitle>
+            <DialogDescription>
+              Live BTC price chart over time
+            </DialogDescription>
+          </DialogHeader>
+          <BTCPriceChart data={btcPriceData} />
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
