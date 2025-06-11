@@ -18,7 +18,7 @@ A modern, responsive cryptocurrency liquidation calculator built with Next.js 14
 2. **Open in VSCode** or your preferred editor
 3. **Install dependencies**:
    \`\`\`bash
-   npm install
+   pnpm install
    \`\`\`
 
 4. **Set up environment variables**:
@@ -27,7 +27,7 @@ A modern, responsive cryptocurrency liquidation calculator built with Next.js 14
 
 5. **Start the development server**:
    \`\`\`bash
-   npm run dev
+   pnpm run dev
    \`\`\`
 
 6. **Open your browser** and navigate to [http://localhost:3000](http://localhost:3000)
