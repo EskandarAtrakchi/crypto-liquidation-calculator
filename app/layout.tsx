@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     "Calculate liquidation prices for cryptocurrency positions with live market data, risk management tools, and comprehensive analytics.",
   keywords: "crypto, liquidation, calculator, trading, bitcoin, ethereum, risk management",
   icons : {
-    icon: "/favicon.ico",
+    icon: "https://github.com/EskandarAtrakchi/crypto-liquidation-calculator/blob/main/public/1_pt8efYSiptRZpS1CM8iKtw.gif?raw=true",
   }
 }
 
