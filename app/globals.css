@@ -56,6 +56,11 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Enable smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 @layer components {
@@ -80,5 +85,15 @@
     mask-composite: exclude;
     pointer-events: none;
     z-index: -1;
+  }
+
+  /* Add scroll margin to headings for better anchor positioning */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    scroll-margin-top: 5rem;
   }
 }

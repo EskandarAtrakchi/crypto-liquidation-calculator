@@ -17,10 +17,24 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   const navigation = [
-    { name: "Calculator", href: "#calculator" },
     { name: "Features", href: "#features" },
     { name: "About", href: "#about" },
   ]
+
+  // Handle navigation with smooth scrolling
+  const handleNavClick = (href: string) => {
+    // Close mobile menu if open
+    if (isOpen) {
+      setIsOpen(false)
+    }
+
+    // Get the element to scroll to
+    const element = document.querySelector(href)
+    if (element) {
+      // Smooth scroll to the element
+      element.scrollIntoView({ behavior: "smooth" })
+    }
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -45,9 +59,13 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
             </Tabs>
 
             {navigation.map((item) => (
-              <a key={item.name} href={item.href} className="text-sm font-medium transition-colors hover:text-primary">
+              <button
+                key={item.name}
+                onClick={() => handleNavClick(item.href)}
+                className="text-sm font-medium transition-colors hover:text-primary"
+              >
                 {item.name}
-              </a>
+              </button>
             ))}
           </div>
 
@@ -69,26 +87,31 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
               <SheetContent side="right">
                 <nav className="flex flex-col space-y-4 mt-8">
                   <div className="pb-4 border-b">
-                    <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+                    <Tabs
+                      value={activeTab}
+                      onValueChange={(value) => {
+                        onTabChange(value)
+                        setIsOpen(false)
+                      }}
+                      className="w-full"
+                    >
                       <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="calculator" onClick={() => setIsOpen(false)}>
-                          🧮 Calculator
-                        </TabsTrigger>
-                        <TabsTrigger value="market" onClick={() => setIsOpen(false)}>
-                          📊 Market
-                        </TabsTrigger>
+                        <TabsTrigger value="calculator">🧮 Calculator</TabsTrigger>
+                        <TabsTrigger value="market">📊 Market</TabsTrigger>
                       </TabsList>
                     </Tabs>
                   </div>
                   {navigation.map((item) => (
-                    <a
+                    <button
                       key={item.name}
-                      href={item.href}
-                      className="text-lg font-medium transition-colors hover:text-primary"
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => {
+                        handleNavClick(item.href)
+                        setIsOpen(false)
+                      }}
+                      className="text-lg font-medium transition-colors hover:text-primary text-left"
                     >
                       {item.name}
-                    </a>
+                    </button>
                   ))}
                 </nav>
               </SheetContent>
