@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -59,14 +59,18 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
   const [isUpdating, setIsUpdating] = useState(false)
   const [showPnL, setShowPnL] = useState(true)
   const [lastUpdateTime, setLastUpdateTime] = useState<string>("")
-  const [closingPosition, setClosingPosition] = useState<PortfolioPosition | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [selectedPositionId, setSelectedPositionId] = useState<string | null>(null)
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
   const [closeData, setCloseData] = useState({
     exitPrice: "",
     notes: "",
     closeReason: "manual" as "manual" | "stop_loss" | "take_profit" | "liquidated",
   })
   const { toast } = useToast()
+
+  // Get the selected position
+  const selectedPosition = positions.find((p) => p.id === selectedPositionId)
 
   // Load positions from localStorage on mount
   useEffect(() => {
@@ -75,7 +79,6 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       try {
         const parsed = JSON.parse(savedPositions)
         setPositions(parsed)
-        // Update prices immediately after loading
         if (parsed.length > 0) {
           updateAllPrices(parsed)
         }
@@ -105,123 +108,111 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
     return () => clearInterval(interval)
   }, [positions])
 
-  const calculatePnL = useCallback((position: PortfolioPosition, currentPrice: number) => {
+  const calculatePnL = (position: PortfolioPosition, currentPrice: number) => {
     const priceChange = currentPrice - position.entryPrice
     const priceChangePercentage = (priceChange / position.entryPrice) * 100
-
-    // For short positions, profit/loss is inverted
     const effectivePriceChange = position.positionType === "long" ? priceChangePercentage : -priceChangePercentage
-
-    // Calculate leveraged return
     const leveragedReturn = effectivePriceChange * position.leverage
-
-    // Calculate actual profit/loss in USD
     const unrealizedPnL = (position.positionSize * leveragedReturn) / 100
 
     return {
       unrealizedPnL,
       unrealizedPnLPercentage: leveragedReturn,
     }
-  }, [])
+  }
 
-  const calculateRiskLevel = useCallback(
-    (position: PortfolioPosition, currentPrice: number): "low" | "medium" | "high" | "critical" => {
-      const distanceToLiquidation =
-        position.positionType === "long"
-          ? ((currentPrice - position.liquidationPrice) / currentPrice) * 100
-          : ((position.liquidationPrice - currentPrice) / currentPrice) * 100
+  const calculateRiskLevel = (
+    position: PortfolioPosition,
+    currentPrice: number,
+  ): "low" | "medium" | "high" | "critical" => {
+    const distanceToLiquidation =
+      position.positionType === "long"
+        ? ((currentPrice - position.liquidationPrice) / currentPrice) * 100
+        : ((position.liquidationPrice - currentPrice) / currentPrice) * 100
 
-      if (distanceToLiquidation <= 5) return "critical"
-      if (distanceToLiquidation <= 15) return "high"
-      if (distanceToLiquidation <= 30) return "medium"
-      return "low"
-    },
-    [],
-  )
+    if (distanceToLiquidation <= 5) return "critical"
+    if (distanceToLiquidation <= 15) return "high"
+    if (distanceToLiquidation <= 30) return "medium"
+    return "low"
+  }
 
-  const updateAllPrices = useCallback(
-    async (positionsToUpdate: PortfolioPosition[]) => {
-      if (isUpdating || positionsToUpdate.length === 0) return
+  const updateAllPrices = async (positionsToUpdate: PortfolioPosition[]) => {
+    if (isUpdating || positionsToUpdate.length === 0) return
 
-      setIsUpdating(true)
-      const updateStartTime = new Date().toLocaleTimeString()
+    setIsUpdating(true)
+    const updateStartTime = new Date().toLocaleTimeString()
 
-      try {
-        const updatedPositions = await Promise.all(
-          positionsToUpdate.map(async (position) => {
-            // Skip closed positions
-            if (position.status === "closed") return position
+    try {
+      const updatedPositions = await Promise.all(
+        positionsToUpdate.map(async (position) => {
+          if (position.status === "closed") return position
 
-            try {
-              const cryptoData = await fetchCryptoBySymbol(position.symbol)
-              if (cryptoData && cryptoData.quotes?.USD) {
-                const currentPrice = cryptoData.quotes.USD.price
-                const { unrealizedPnL, unrealizedPnLPercentage } = calculatePnL(position, currentPrice)
-                const riskLevel = calculateRiskLevel(position, currentPrice)
+          try {
+            const cryptoData = await fetchCryptoBySymbol(position.symbol)
+            if (cryptoData && cryptoData.quotes?.USD) {
+              const currentPrice = cryptoData.quotes.USD.price
+              const { unrealizedPnL, unrealizedPnLPercentage } = calculatePnL(position, currentPrice)
+              const riskLevel = calculateRiskLevel(position, currentPrice)
 
-                const distanceToLiquidation =
-                  position.positionType === "long"
-                    ? ((currentPrice - position.liquidationPrice) / currentPrice) * 100
-                    : ((position.liquidationPrice - currentPrice) / currentPrice) * 100
+              const distanceToLiquidation =
+                position.positionType === "long"
+                  ? ((currentPrice - position.liquidationPrice) / currentPrice) * 100
+                  : ((position.liquidationPrice - currentPrice) / currentPrice) * 100
 
-                return {
-                  ...position,
-                  currentPrice,
-                  unrealizedPnL,
-                  unrealizedPnLPercentage,
-                  riskLevel,
-                  distanceToLiquidation: Math.max(0, distanceToLiquidation),
-                  lastUpdated: new Date().toLocaleTimeString(),
-                }
+              return {
+                ...position,
+                currentPrice,
+                unrealizedPnL,
+                unrealizedPnLPercentage,
+                riskLevel,
+                distanceToLiquidation: Math.max(0, distanceToLiquidation),
+                lastUpdated: new Date().toLocaleTimeString(),
               }
-              return position
-            } catch (error) {
-              console.error(`Failed to update ${position.symbol}:`, error)
-              return position
             }
-          }),
-        )
-
-        setPositions(updatedPositions)
-        setLastUpdateTime(updateStartTime)
-
-        // Check for critical positions and alert
-        const criticalPositions = updatedPositions.filter((p) => p.riskLevel === "critical" && p.status === "open")
-        if (criticalPositions.length > 0) {
-          toast({
-            title: "🚨 LIQUIDATION RISK",
-            description: `${criticalPositions.length} position(s) critically close to liquidation!`,
-            variant: "destructive",
-          })
-
-          // Browser notification if available
-          if (Notification.permission === "granted") {
-            new Notification("CRITICAL LIQUIDATION RISK", {
-              body: `${criticalPositions.length} position(s) need immediate attention!`,
-              icon: "/logo-tab.jpg",
-            })
+            return position
+          } catch (error) {
+            console.error(`Failed to update ${position.symbol}:`, error)
+            return position
           }
-        }
+        }),
+      )
 
+      setPositions(updatedPositions)
+      setLastUpdateTime(updateStartTime)
+
+      const criticalPositions = updatedPositions.filter((p) => p.riskLevel === "critical" && p.status === "open")
+      if (criticalPositions.length > 0) {
         toast({
-          title: "✅ Prices Updated",
-          description: `Portfolio updated with latest market prices`,
-        })
-      } catch (error) {
-        console.error("Failed to update prices:", error)
-        toast({
-          title: "❌ Update Failed",
-          description: "Could not fetch latest prices. Please try again.",
+          title: "🚨 LIQUIDATION RISK",
+          description: `${criticalPositions.length} position(s) critically close to liquidation!`,
           variant: "destructive",
         })
-      } finally {
-        setIsUpdating(false)
-      }
-    },
-    [isUpdating, calculatePnL, calculateRiskLevel, toast],
-  )
 
-  const addCurrentPosition = useCallback(() => {
+        if (Notification.permission === "granted") {
+          new Notification("CRITICAL LIQUIDATION RISK", {
+            body: `${criticalPositions.length} position(s) need immediate attention!`,
+            icon: "/logo-tab.jpg",
+          })
+        }
+      }
+
+      toast({
+        title: "✅ Prices Updated",
+        description: `Portfolio updated with latest market prices`,
+      })
+    } catch (error) {
+      console.error("Failed to update prices:", error)
+      toast({
+        title: "❌ Update Failed",
+        description: "Could not fetch latest prices. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const addCurrentPosition = () => {
     if (!currentPosition || !currentResult) {
       toast({
         title: "❌ No Position to Add",
@@ -231,7 +222,6 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       return
     }
 
-    // Check if similar position already exists
     const existingPosition = positions.find(
       (p) =>
         p.symbol === currentPosition.symbol &&
@@ -266,7 +256,6 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
 
     setPositions((prev) => [newPosition, ...prev])
 
-    // Update price immediately for the new position
     setTimeout(() => {
       updateAllPrices([newPosition, ...positions])
     }, 500)
@@ -275,33 +264,36 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       title: "✅ Position Added",
       description: `${currentPosition.symbol} ${currentPosition.positionType.toUpperCase()} position added to portfolio`,
     })
-  }, [currentPosition, currentResult, positions, toast, updateAllPrices])
+  }
 
-  const openCloseDialog = useCallback((position: PortfolioPosition) => {
-    setClosingPosition(position)
+  const handleOpenCloseDialog = (position: PortfolioPosition) => {
+    // Close any open dropdown first
+    setOpenDropdownId(null)
+
+    setSelectedPositionId(position.id)
     setCloseData({
       exitPrice: position.currentPrice.toString(),
       notes: "",
       closeReason: "manual",
     })
     setIsDialogOpen(true)
-  }, [])
+  }
 
-  const closeDialog = useCallback(() => {
+  const handleCloseDialog = () => {
     setIsDialogOpen(false)
-    // Add a small delay to ensure dialog is fully closed before clearing state
+    // Clear state after dialog animation completes
     setTimeout(() => {
-      setClosingPosition(null)
+      setSelectedPositionId(null)
       setCloseData({
         exitPrice: "",
         notes: "",
         closeReason: "manual",
       })
-    }, 150)
-  }, [])
+    }, 200)
+  }
 
-  const closePosition = useCallback(() => {
-    if (!closingPosition || !closeData.exitPrice) {
+  const handleClosePosition = () => {
+    if (!selectedPosition || !closeData.exitPrice) {
       toast({
         title: "❌ Invalid Exit Price",
         description: "Please enter a valid exit price",
@@ -320,10 +312,10 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       return
     }
 
-    const { unrealizedPnL } = calculatePnL(closingPosition, exitPrice)
+    const { unrealizedPnL } = calculatePnL(selectedPosition, exitPrice)
 
     const closedPosition: PortfolioPosition = {
-      ...closingPosition,
+      ...selectedPosition,
       status: "closed",
       exitPrice,
       exitDate: new Date().toISOString(),
@@ -333,34 +325,34 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       lastUpdated: new Date().toLocaleTimeString(),
     }
 
-    setPositions((prev) => prev.map((pos) => (pos.id === closingPosition.id ? closedPosition : pos)))
+    setPositions((prev) => prev.map((pos) => (pos.id === selectedPosition.id ? closedPosition : pos)))
 
-    // Close dialog first
-    closeDialog()
+    // Close dialog immediately
+    handleCloseDialog()
 
-    // Show success toast
+    // Show success toast after a brief delay
     setTimeout(() => {
       toast({
         title: unrealizedPnL >= 0 ? "🎉 Position Closed - Profit!" : "📉 Position Closed - Loss",
-        description: `${closingPosition.symbol} closed with ${unrealizedPnL >= 0 ? "+" : ""}$${formatPrice(Math.abs(unrealizedPnL))} P&L`,
+        description: `${selectedPosition.symbol} closed with ${unrealizedPnL >= 0 ? "+" : ""}$${formatPrice(Math.abs(unrealizedPnL))} P&L`,
       })
-    }, 200)
-  }, [closingPosition, closeData, calculatePnL, closeDialog, toast])
+    }, 300)
+  }
 
-  const removePosition = useCallback(
-    (id: string) => {
-      const position = positions.find((p) => p.id === id)
-      setPositions((prev) => prev.filter((pos) => pos.id !== id))
+  const handleRemovePosition = (id: string) => {
+    // Close any open dropdown first
+    setOpenDropdownId(null)
 
-      toast({
-        title: "🗑️ Position Removed",
-        description: `${position?.symbol} position removed from portfolio`,
-      })
-    },
-    [positions, toast],
-  )
+    const position = positions.find((p) => p.id === id)
+    setPositions((prev) => prev.filter((pos) => pos.id !== id))
 
-  const getRiskColor = useCallback((level: string) => {
+    toast({
+      title: "🗑️ Position Removed",
+      description: `${position?.symbol} position removed from portfolio`,
+    })
+  }
+
+  const getRiskColor = (level: string) => {
     switch (level) {
       case "low":
         return "text-green-600 bg-green-50 dark:bg-green-900/20 border-green-200"
@@ -373,9 +365,9 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       default:
         return "text-gray-500"
     }
-  }, [])
+  }
 
-  const getRiskProgress = useCallback((level: string, distance: number) => {
+  const getRiskProgress = (level: string, distance: number) => {
     switch (level) {
       case "critical":
         return Math.min((distance / 5) * 100, 100)
@@ -386,7 +378,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       default:
         return 100
     }
-  }, [])
+  }
 
   // Calculate portfolio statistics
   const openPositions = positions.filter((p) => p.status === "open")
@@ -409,7 +401,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
 
   return (
     <div className="space-y-4 px-2 sm:px-0">
-      {/* Current Position Quick Add - Mobile Optimized */}
+      {/* Current Position Quick Add */}
       {currentPosition && currentResult && (
         <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5">
           <CardHeader className="pb-3">
@@ -452,7 +444,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
         </Card>
       )}
 
-      {/* Portfolio Overview - Mobile Optimized */}
+      {/* Portfolio Overview */}
       <Card>
         <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -464,7 +456,13 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
               </Badge>
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" onClick={() => setShowPnL(!showPnL)} className="p-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPnL(!showPnL)}
+                className="p-2"
+                aria-label={showPnL ? "Hide P&L values" : "Show P&L values"}
+              >
                 {showPnL ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </Button>
               <Button
@@ -473,6 +471,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                 onClick={() => updateAllPrices(positions)}
                 disabled={isUpdating || openPositions.length === 0}
                 className="p-2"
+                aria-label="Update all prices"
               >
                 {isUpdating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               </Button>
@@ -481,7 +480,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
           {lastUpdateTime && <p className="text-xs text-muted-foreground">Last updated: {lastUpdateTime}</p>}
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Portfolio Statistics - Mobile Grid */}
+          {/* Portfolio Statistics */}
           <div className="grid grid-cols-2 gap-3 p-4 bg-gradient-to-r from-muted/30 to-muted/10 rounded-lg border">
             <div className="text-center">
               <p className="text-lg font-bold text-primary">${formatPrice(portfolioStats.totalValue)}</p>
@@ -532,7 +531,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
 
           {/* Risk Alerts */}
           {portfolioStats.criticalPositions > 0 && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 rounded-lg">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 rounded-lg" role="alert">
               <div className="flex items-center space-x-2 text-red-600 dark:text-red-400 mb-1">
                 <AlertTriangle className="h-4 w-4 animate-pulse" />
                 <span className="font-bold text-sm">CRITICAL RISK</span>
@@ -544,7 +543,10 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
           )}
 
           {portfolioStats.highRiskPositions > 0 && portfolioStats.criticalPositions === 0 && (
-            <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-lg">
+            <div
+              className="p-3 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-lg"
+              role="alert"
+            >
               <div className="flex items-center space-x-2 text-orange-600 dark:text-orange-400 mb-1">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="font-semibold text-sm">High Risk</span>
@@ -555,7 +557,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
             </div>
           )}
 
-          {/* Positions List - Mobile Optimized */}
+          {/* Positions List */}
           {positions.length > 0 ? (
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -581,7 +583,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                   }`}
                 >
                   <CardContent className="p-4">
-                    {/* Mobile Header */}
+                    {/* Position Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex flex-col space-y-2">
                         <div className="flex items-center space-x-2">
@@ -615,22 +617,33 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                         </div>
                       </div>
 
-                      {/* Mobile Actions Menu */}
-                      <DropdownMenu>
+                      {/* Actions Menu */}
+                      <DropdownMenu
+                        open={openDropdownId === position.id}
+                        onOpenChange={(open) => setOpenDropdownId(open ? position.id : null)}
+                      >
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="p-2 h-8 w-8">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="p-2 h-8 w-8"
+                            aria-label={`Actions for ${position.symbol} position`}
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           {position.status === "open" && (
-                            <DropdownMenuItem onClick={() => openCloseDialog(position)} className="cursor-pointer">
+                            <DropdownMenuItem
+                              onClick={() => handleOpenCloseDialog(position)}
+                              className="cursor-pointer"
+                            >
                               <X className="h-4 w-4 mr-2" />
                               Close Position
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem
-                            onClick={() => removePosition(position.id)}
+                            onClick={() => handleRemovePosition(position.id)}
                             className="text-red-600 cursor-pointer"
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
@@ -640,7 +653,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                       </DropdownMenu>
                     </div>
 
-                    {/* Mobile Price Grid */}
+                    {/* Price Grid */}
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       <div className="p-2 bg-muted/30 rounded-lg">
                         <span className="text-xs text-muted-foreground block mb-1">Entry</span>
@@ -668,7 +681,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                       </div>
                     </div>
 
-                    {/* Mobile P&L Section */}
+                    {/* P&L Section */}
                     <div className="grid grid-cols-1 gap-3 mb-4">
                       <div
                         className={`p-3 rounded-lg border ${
@@ -760,6 +773,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                                     ? "bg-yellow-100"
                                     : "bg-green-100"
                             }`}
+                            aria-label={`Risk level: ${position.riskLevel}, ${position.distanceToLiquidation.toFixed(1)}% from liquidation`}
                           />
                           <div className="absolute inset-0 flex items-center justify-center">
                             <span className="text-xs font-semibold text-gray-700">
@@ -803,7 +817,10 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
 
                     {/* Critical Warning */}
                     {position.status === "open" && position.riskLevel === "critical" && (
-                      <div className="p-2 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg mb-3">
+                      <div
+                        className="p-2 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg mb-3"
+                        role="alert"
+                      >
                         <div className="flex items-center space-x-1">
                           <AlertTriangle className="h-3 w-3 text-red-500 animate-pulse" />
                           <span className="text-xs text-red-600 dark:text-red-400 font-bold">LIQUIDATION RISK!</span>
@@ -826,7 +843,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
               ))}
             </div>
           ) : (
-            // Empty State - Mobile Optimized
+            // Empty State
             <Card className="border-dashed border-2">
               <CardContent className="text-center py-12">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
@@ -850,11 +867,11 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
         </CardContent>
       </Card>
 
-      {/* Close Position Dialog - Mobile Optimized */}
+      {/* Close Position Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg">Close Position: {closingPosition?.symbol}</DialogTitle>
+            <DialogTitle className="text-lg">Close Position: {selectedPosition?.symbol}</DialogTitle>
             <DialogDescription className="text-sm">
               Enter the exit price and details for closing this position
             </DialogDescription>
@@ -904,32 +921,33 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                 autoComplete="off"
               />
             </div>
-            {closeData.exitPrice && closingPosition && !isNaN(Number.parseFloat(closeData.exitPrice)) && (
+            {closeData.exitPrice && selectedPosition && !isNaN(Number.parseFloat(closeData.exitPrice)) && (
               <div className="p-3 bg-muted/30 rounded-lg">
                 <p className="text-sm font-medium mb-1">Estimated P&L:</p>
                 <p
                   className={`text-xl font-bold ${
-                    calculatePnL(closingPosition, Number.parseFloat(closeData.exitPrice)).unrealizedPnL >= 0
+                    calculatePnL(selectedPosition, Number.parseFloat(closeData.exitPrice)).unrealizedPnL >= 0
                       ? "text-green-500"
                       : "text-red-500"
                   }`}
                 >
-                  {calculatePnL(closingPosition, Number.parseFloat(closeData.exitPrice)).unrealizedPnL >= 0 ? "+" : ""}$
+                  {calculatePnL(selectedPosition, Number.parseFloat(closeData.exitPrice)).unrealizedPnL >= 0 ? "+" : ""}
+                  $
                   {formatPrice(
-                    Math.abs(calculatePnL(closingPosition, Number.parseFloat(closeData.exitPrice)).unrealizedPnL),
+                    Math.abs(calculatePnL(selectedPosition, Number.parseFloat(closeData.exitPrice)).unrealizedPnL),
                   )}
                 </p>
               </div>
             )}
             <div className="flex flex-col gap-3 pt-2">
               <Button
-                onClick={closePosition}
+                onClick={handleClosePosition}
                 className="w-full h-12 text-base font-medium"
                 disabled={!closeData.exitPrice || isNaN(Number.parseFloat(closeData.exitPrice))}
               >
                 Close Position
               </Button>
-              <Button variant="outline" onClick={closeDialog} className="w-full h-12 text-base bg-transparent">
+              <Button variant="outline" onClick={handleCloseDialog} className="w-full h-12 text-base bg-transparent">
                 Cancel
               </Button>
             </div>
