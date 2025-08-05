@@ -36,11 +36,18 @@ export function LiquidationCalculator() {
   const [result, setResult] = useState<CalculationResult | null>(null)
   const [position, setPosition] = useState<Position | null>(null)
   const [priceData, setPriceData] = useState<Array<{ time: string; price: number }>>([])
+  const [activeTab, setActiveTab] = useState("calculator")
+
+  const handleCalculate = (calcResult: CalculationResult, calcPosition: Position) => {
+    setResult(calcResult)
+    setPosition(calcPosition)
+    console.log("New position calculated:", calcPosition, calcResult)
+  }
 
   return (
     <div className="space-y-8" id="calculator">
       {/* Enhanced Tabs Navigation */}
-      <Tabs defaultValue="calculator" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto p-1">
           <TabsTrigger value="calculator" className="flex items-center space-x-2 py-3">
             <Target className="h-4 w-4" />
@@ -49,6 +56,11 @@ export function LiquidationCalculator() {
           <TabsTrigger value="portfolio" className="flex items-center space-x-2 py-3">
             <DollarSign className="h-4 w-4" />
             <span className="hidden sm:inline">Portfolio</span>
+            {position && result && (
+              <Badge variant="destructive" className="ml-1 text-xs animate-pulse">
+                NEW
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="alerts" className="flex items-center space-x-2 py-3">
             <Bell className="h-4 w-4" />
@@ -89,13 +101,7 @@ export function LiquidationCalculator() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="relative z-10">
-                  <CalculatorForm
-                    onCalculate={(calc, pos) => {
-                      setResult(calc)
-                      setPosition(pos)
-                    }}
-                    onPriceUpdate={setPriceData}
-                  />
+                  <CalculatorForm onCalculate={handleCalculate} onPriceUpdate={setPriceData} />
                 </CardContent>
               </Card>
 
@@ -162,9 +168,9 @@ export function LiquidationCalculator() {
           </div>
         </TabsContent>
 
-        {/* Portfolio Tab */}
+        {/* Portfolio Tab - Now properly integrated */}
         <TabsContent value="portfolio" className="space-y-6">
-          <PortfolioTracker />
+          <PortfolioTracker currentPosition={position} currentResult={result} />
         </TabsContent>
 
         {/* Alerts Tab */}

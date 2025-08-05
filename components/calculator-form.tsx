@@ -218,6 +218,7 @@ export function CalculatorForm({ onCalculate, onPriceUpdate }: CalculatorFormPro
           marginUsed: marginRequired,
         }
 
+        console.log("Calling onCalculate with:", result, position)
         onCalculate(result, position)
         setIsCalculated(true)
 
