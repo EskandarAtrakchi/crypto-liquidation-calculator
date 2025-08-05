@@ -228,7 +228,7 @@ export function CalculatorForm({ onCalculate, onPriceUpdate }: CalculatorFormPro
 
         toast({
           title: "🎯 Calculation Complete!",
-          description: `Liquidation price: $${formatPrice(result.liquidationPrice)}`,
+          description: `${positionType.toUpperCase()} position - Liquidation price: $${formatPrice(result.liquidationPrice)}`,
         })
       } catch (error) {
         toast({
@@ -260,7 +260,7 @@ export function CalculatorForm({ onCalculate, onPriceUpdate }: CalculatorFormPro
         <p className="text-sm text-muted-foreground">Calculate your liquidation price and analyze risk in real-time</p>
       </div>
 
-      {/* Crypto Symbol Input */}
+      {/* Crypto Symbol and Position Type */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -317,19 +317,28 @@ export function CalculatorForm({ onCalculate, onPriceUpdate }: CalculatorFormPro
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="long">
-                  <span className="text-green-600 flex items-center">
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    Long (Buy) 📈
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <span className="text-green-600 font-medium">Long (Buy) 📈</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="short">
-                  <span className="text-red-600 flex items-center">
-                    <TrendingDown className="h-4 w-4 mr-2" />
-                    Short (Sell) 📉
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <TrendingDown className="h-4 w-4 text-red-600" />
+                    <span className="text-red-600 font-medium">Short (Sell) 📉</span>
+                  </div>
                 </SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Position Type Indicator */}
+            <div className="text-xs text-muted-foreground">
+              {positionType === "long" ? (
+                <span className="text-green-600">✓ Profit when price goes UP</span>
+              ) : (
+                <span className="text-red-600">✓ Profit when price goes DOWN</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -374,10 +383,10 @@ export function CalculatorForm({ onCalculate, onPriceUpdate }: CalculatorFormPro
 
             {priceHistory.length > 0 && (
               <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
-                <p className="text-xs text-muted-foreground flex items-center space-x-2">
+                <div className="text-xs text-muted-foreground flex items-center space-x-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                   <span>Chart data: {priceHistory.length} price points collected</span>
-                </p>
+                </div>
               </div>
             )}
           </div>
@@ -385,9 +394,9 @@ export function CalculatorForm({ onCalculate, onPriceUpdate }: CalculatorFormPro
 
         {symbolNotFound && !useCustomPrice && (
           <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg animate-in slide-in-from-top duration-300">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            <div className="text-sm text-yellow-800 dark:text-yellow-200">
               ⚠️ Symbol "{cryptoSymbol}" not found in our database. You can still use a custom price below.
-            </p>
+            </div>
           </div>
         )}
       </div>
