@@ -11,6 +11,9 @@ import { fetchCryptoBySymbol, POPULAR_CRYPTOS, formatPrice, formatPercentage } f
 import type { CalculationResult, Position } from "./liquidation-calculator"
 import type { CryptoData } from "@/lib/crypto-api"
 
+const FORM_STATE_STORAGE_KEY = "crypto-calculator-form-state"
+const PRICE_HISTORY_STORAGE_KEY = "crypto-calculator-price-history"
+
 interface CalculatorFormProps {
   onCalculate: (result: CalculationResult, position: Position) => void
   onPriceUpdate: (data: Array<{ time: string; price: number }>) => void
@@ -38,7 +41,54 @@ export function CalculatorForm({ onCalculate, onPriceUpdate }: CalculatorFormPro
     if (shouldUpdateParent.current) {
       onPriceUpdate(priceHistory)
     }
+    // Save price history to localStorage
+    if (priceHistory.length > 0) {
+      localStorage.setItem(PRICE_HISTORY_STORAGE_KEY, JSON.stringify(priceHistory))
+    }
   }, [priceHistory, onPriceUpdate])
+
+  useEffect(() => {
+    // Load saved form state
+    const savedFormState = localStorage.getItem(FORM_STATE_STORAGE_KEY)
+    if (savedFormState) {
+      try {
+        const parsedState = JSON.parse(savedFormState)
+        setCryptoSymbol(parsedState.cryptoSymbol || "BTC")
+        setEntryPrice(parsedState.entryPrice || "")
+        setLeverage(parsedState.leverage || "")
+        setPositionType(parsedState.positionType || "long")
+        setPositionSize(parsedState.positionSize || "1000")
+        setUseLivePrice(parsedState.useLivePrice || false)
+        setUseCustomPrice(parsedState.useCustomPrice || false)
+      } catch (error) {
+        console.error("Failed to load form state from localStorage:", error)
+      }
+    }
+
+    // Load saved price history
+    const savedPriceHistory = localStorage.getItem(PRICE_HISTORY_STORAGE_KEY)
+    if (savedPriceHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedPriceHistory)
+        setPriceHistory(parsedHistory)
+      } catch (error) {
+        console.error("Failed to load price history from localStorage:", error)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const formState = {
+      cryptoSymbol,
+      entryPrice,
+      leverage,
+      positionType,
+      positionSize,
+      useLivePrice,
+      useCustomPrice,
+    }
+    localStorage.setItem(FORM_STATE_STORAGE_KEY, JSON.stringify(formState))
+  }, [cryptoSymbol, entryPrice, leverage, positionType, positionSize, useLivePrice, useCustomPrice])
 
   const addPriceToHistory = useCallback((price: number) => {
     const now = new Date()

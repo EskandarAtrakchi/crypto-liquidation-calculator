@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalculatorForm } from "./calculator-form"
@@ -9,10 +9,8 @@ import { RiskAnalysis } from "./risk-analysis"
 import { PositionSummary } from "./position-summary"
 import { MarketOverview } from "./market-overview"
 import { PortfolioTracker } from "./portfolio-tracker"
-import { RiskAlerts } from "./risk-alerts"
-import { TradingJournal } from "./trading-journal"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, BarChart3, Shield, Target, DollarSign, Bell, BookOpen } from "lucide-react"
+import { TrendingUp, BarChart3, Shield, Target, DollarSign } from "lucide-react"
 import { ProfitLossCalculator } from "./profit-loss-calculator"
 
 export interface CalculationResult {
@@ -32,11 +30,76 @@ export interface Position {
   marginUsed: number
 }
 
+const CALCULATION_STORAGE_KEY = "crypto-liquidation-calculation"
+const POSITION_STORAGE_KEY = "crypto-liquidation-position"
+const PRICE_DATA_STORAGE_KEY = "crypto-liquidation-price-data"
+
 export function LiquidationCalculator() {
   const [result, setResult] = useState<CalculationResult | null>(null)
   const [position, setPosition] = useState<Position | null>(null)
   const [priceData, setPriceData] = useState<Array<{ time: string; price: number }>>([])
   const [activeTab, setActiveTab] = useState("calculator")
+
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    try {
+      // Load calculation result
+      const savedCalculation = localStorage.getItem(CALCULATION_STORAGE_KEY)
+      if (savedCalculation) {
+        const parsedCalculation = JSON.parse(savedCalculation)
+        setResult(parsedCalculation)
+      }
+
+      // Load position data
+      const savedPosition = localStorage.getItem(POSITION_STORAGE_KEY)
+      if (savedPosition) {
+        const parsedPosition = JSON.parse(savedPosition)
+        setPosition(parsedPosition)
+      }
+
+      // Load price data
+      const savedPriceData = localStorage.getItem(PRICE_DATA_STORAGE_KEY)
+      if (savedPriceData) {
+        const parsedPriceData = JSON.parse(savedPriceData)
+        setPriceData(parsedPriceData)
+      }
+    } catch (error) {
+      console.error("Failed to load data from localStorage:", error)
+    }
+  }, [])
+
+  // Save calculation result to localStorage whenever it changes
+  useEffect(() => {
+    if (result) {
+      try {
+        localStorage.setItem(CALCULATION_STORAGE_KEY, JSON.stringify(result))
+      } catch (error) {
+        console.error("Failed to save calculation to localStorage:", error)
+      }
+    }
+  }, [result])
+
+  // Save position to localStorage whenever it changes
+  useEffect(() => {
+    if (position) {
+      try {
+        localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(position))
+      } catch (error) {
+        console.error("Failed to save position to localStorage:", error)
+      }
+    }
+  }, [position])
+
+  // Save price data to localStorage whenever it changes
+  useEffect(() => {
+    if (priceData.length > 0) {
+      try {
+        localStorage.setItem(PRICE_DATA_STORAGE_KEY, JSON.stringify(priceData))
+      } catch (error) {
+        console.error("Failed to save price data to localStorage:", error)
+      }
+    }
+  }, [priceData])
 
   const handleCalculate = (calcResult: CalculationResult, calcPosition: Position) => {
     setResult(calcResult)
@@ -48,7 +111,7 @@ export function LiquidationCalculator() {
     <div className="space-y-8" id="calculator">
       {/* Enhanced Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto p-1">
+        <TabsList className="grid w-full grid-cols-3 h-auto p-1">
           <TabsTrigger value="calculator" className="flex items-center space-x-2 py-3">
             <Target className="h-4 w-4" />
             <span className="hidden sm:inline">Calculator</span>
@@ -61,14 +124,6 @@ export function LiquidationCalculator() {
                 NEW
               </Badge>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="alerts" className="flex items-center space-x-2 py-3">
-            <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">Alerts</span>
-          </TabsTrigger>
-          <TabsTrigger value="journal" className="flex items-center space-x-2 py-3">
-            <BookOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Journal</span>
           </TabsTrigger>
           <TabsTrigger value="education" className="flex items-center space-x-2 py-3">
             <Shield className="h-4 w-4" />
@@ -168,19 +223,9 @@ export function LiquidationCalculator() {
           </div>
         </TabsContent>
 
-        {/* Portfolio Tab - Now properly integrated */}
+        {/* Portfolio Tab - Enhanced with close functionality */}
         <TabsContent value="portfolio" className="space-y-6">
           <PortfolioTracker currentPosition={position} currentResult={result} />
-        </TabsContent>
-
-        {/* Alerts Tab */}
-        <TabsContent value="alerts" className="space-y-6">
-          <RiskAlerts />
-        </TabsContent>
-
-        {/* Journal Tab */}
-        <TabsContent value="journal" className="space-y-6">
-          <TradingJournal />
         </TabsContent>
 
         {/* Education Tab */}
