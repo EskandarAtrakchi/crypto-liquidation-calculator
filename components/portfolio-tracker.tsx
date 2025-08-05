@@ -1,21 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Trash2,
   TrendingUp,
@@ -29,7 +22,9 @@ import {
   X,
   Calendar,
   FileText,
+  MoreVertical,
 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { formatPrice, fetchCryptoBySymbol } from "@/lib/crypto-api"
 import { useToast } from "@/hooks/use-toast"
 import type { Position, CalculationResult } from "./liquidation-calculator"
@@ -370,69 +365,63 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
   }
 
   return (
-    <div className="space-y-6">
-      {/* Current Position Quick Add */}
+    <div className="space-y-4 px-2 sm:px-0">
+      {/* Current Position Quick Add - Mobile Optimized */}
       {currentPosition && currentResult && (
         <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center space-x-2">
-                <Plus className="h-5 w-5 text-primary" />
-                <span>Ready to Add to Portfolio</span>
-              </span>
-              <Button onClick={addCurrentPosition} className="bg-primary hover:bg-primary/90">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center space-x-2">
+                <Plus className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Ready to Add</span>
+              </div>
+              <Button onClick={addCurrentPosition} size="sm" className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Position
               </Button>
-            </CardTitle>
+            </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
                 <span className="text-muted-foreground block">Symbol</span>
-                <p className="font-bold text-lg">{currentPosition.symbol}</p>
+                <p className="font-bold text-sm">{currentPosition.symbol}</p>
               </div>
               <div>
                 <span className="text-muted-foreground block">Type</span>
-                <Badge variant={currentPosition.positionType === "long" ? "default" : "destructive"}>
+                <Badge
+                  variant={currentPosition.positionType === "long" ? "default" : "destructive"}
+                  className="text-xs"
+                >
                   {currentPosition.positionType.toUpperCase()}
                 </Badge>
               </div>
               <div>
                 <span className="text-muted-foreground block">Entry</span>
-                <p className="font-mono font-semibold">${formatPrice(currentPosition.entryPrice)}</p>
+                <p className="font-mono font-semibold text-sm">${formatPrice(currentPosition.entryPrice)}</p>
               </div>
               <div>
                 <span className="text-muted-foreground block">Leverage</span>
-                <p className="font-mono font-semibold">{currentPosition.leverage}x</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Liquidation</span>
-                <p className="font-mono font-semibold text-red-500">${formatPrice(currentResult.liquidationPrice)}</p>
+                <p className="font-mono font-semibold text-sm">{currentPosition.leverage}x</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Portfolio Overview */}
+      {/* Portfolio Overview - Mobile Optimized */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center space-x-2">
-              <DollarSign className="h-5 w-5 text-primary" />
-              <span>Portfolio Dashboard</span>
-              <Badge variant="outline" className="ml-2">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-sm">Portfolio</span>
+              <Badge variant="outline" className="text-xs">
                 {openPositions.length} Open • {closedPositions.length} Closed
               </Badge>
-            </span>
+            </div>
             <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowPnL(!showPnL)}
-                title={showPnL ? "Hide P&L" : "Show P&L"}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShowPnL(!showPnL)} className="p-2">
                 {showPnL ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               </Button>
               <Button
@@ -440,25 +429,24 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                 size="sm"
                 onClick={() => updateAllPrices(positions)}
                 disabled={isUpdating || openPositions.length === 0}
-                title="Update all prices"
+                className="p-2"
               >
                 {isUpdating ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                {!isUpdating && <span className="ml-2 hidden sm:inline">Update</span>}
               </Button>
             </div>
-          </CardTitle>
-          {lastUpdateTime && <p className="text-sm text-muted-foreground">Last updated: {lastUpdateTime}</p>}
+          </div>
+          {lastUpdateTime && <p className="text-xs text-muted-foreground">Last updated: {lastUpdateTime}</p>}
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Portfolio Statistics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gradient-to-r from-muted/30 to-muted/10 rounded-xl border">
+        <CardContent className="space-y-4">
+          {/* Portfolio Statistics - Mobile Grid */}
+          <div className="grid grid-cols-2 gap-3 p-4 bg-gradient-to-r from-muted/30 to-muted/10 rounded-lg border">
             <div className="text-center">
-              <p className="text-2xl font-bold text-primary">${formatPrice(portfolioStats.totalValue)}</p>
-              <p className="text-sm text-muted-foreground font-medium">Open Position Value</p>
+              <p className="text-lg font-bold text-primary">${formatPrice(portfolioStats.totalValue)}</p>
+              <p className="text-xs text-muted-foreground font-medium">Position Value</p>
             </div>
             <div className="text-center">
               <p
-                className={`text-2xl font-bold ${
+                className={`text-lg font-bold ${
                   showPnL ? (portfolioStats.totalPnL >= 0 ? "text-green-500" : "text-red-500") : "text-muted-foreground"
                 }`}
               >
@@ -470,11 +458,11 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                   "***"
                 )}
               </p>
-              <p className="text-sm text-muted-foreground font-medium">Unrealized P&L</p>
+              <p className="text-xs text-muted-foreground font-medium">Unrealized P&L</p>
             </div>
             <div className="text-center">
               <p
-                className={`text-2xl font-bold ${
+                className={`text-lg font-bold ${
                   showPnL
                     ? portfolioStats.totalRealizedPnL >= 0
                       ? "text-green-500"
@@ -491,47 +479,48 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                   "***"
                 )}
               </p>
-              <p className="text-sm text-muted-foreground font-medium">Realized P&L</p>
+              <p className="text-xs text-muted-foreground font-medium">Realized P&L</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{portfolioStats.winRate.toFixed(1)}%</p>
-              <p className="text-sm text-muted-foreground font-medium">Win Rate</p>
+              <p className="text-lg font-bold text-blue-600">{portfolioStats.winRate.toFixed(1)}%</p>
+              <p className="text-xs text-muted-foreground font-medium">Win Rate</p>
             </div>
           </div>
 
           {/* Risk Alerts */}
           {portfolioStats.criticalPositions > 0 && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 rounded-lg">
-              <div className="flex items-center space-x-2 text-red-600 dark:text-red-400 mb-2">
-                <AlertTriangle className="h-5 w-5 animate-pulse" />
-                <span className="font-bold">CRITICAL LIQUIDATION RISK</span>
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 rounded-lg">
+              <div className="flex items-center space-x-2 text-red-600 dark:text-red-400 mb-1">
+                <AlertTriangle className="h-4 w-4 animate-pulse" />
+                <span className="font-bold text-sm">CRITICAL RISK</span>
               </div>
-              <p className="text-sm text-red-600 dark:text-red-400 font-medium">
-                {portfolioStats.criticalPositions} position(s) are dangerously close to liquidation! Consider reducing
-                position size or adding margin immediately.
+              <p className="text-xs text-red-600 dark:text-red-400">
+                {portfolioStats.criticalPositions} position(s) close to liquidation!
               </p>
             </div>
           )}
 
           {portfolioStats.highRiskPositions > 0 && portfolioStats.criticalPositions === 0 && (
-            <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-lg">
-              <div className="flex items-center space-x-2 text-orange-600 dark:text-orange-400 mb-2">
-                <AlertTriangle className="h-5 w-5" />
-                <span className="font-semibold">High Risk Warning</span>
+            <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-lg">
+              <div className="flex items-center space-x-2 text-orange-600 dark:text-orange-400 mb-1">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="font-semibold text-sm">High Risk</span>
               </div>
-              <p className="text-sm text-orange-600 dark:text-orange-400">
-                {portfolioStats.highRiskPositions} position(s) are at high risk. Monitor closely.
+              <p className="text-xs text-orange-600 dark:text-orange-400">
+                {portfolioStats.highRiskPositions} position(s) at high risk.
               </p>
             </div>
           )}
 
-          {/* Positions List */}
+          {/* Positions List - Mobile Optimized */}
           {positions.length > 0 ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center space-x-2">
-                <span>All Positions</span>
-                <Badge variant="secondary">{positions.length}</Badge>
-              </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h3 className="text-base font-semibold">Positions</h3>
+                <Badge variant="secondary" className="text-xs">
+                  {positions.length}
+                </Badge>
+              </div>
 
               {positions.map((position) => (
                 <Card
@@ -548,167 +537,95 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                             : "border-green-500"
                   }`}
                 >
-                  <CardContent className="p-6">
-                    {/* Position Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="font-bold text-xl">{position.symbol}</h3>
-                        <Badge
-                          variant={position.positionType === "long" ? "default" : "destructive"}
-                          className="px-3 py-1"
-                        >
-                          {position.positionType === "long" ? (
-                            <>
-                              <TrendingUp className="h-3 w-3 mr-1" />
-                              LONG
-                            </>
-                          ) : (
-                            <>
-                              <TrendingDown className="h-3 w-3 mr-1" />
-                              SHORT
-                            </>
-                          )}
-                        </Badge>
-                        <Badge variant={position.status === "open" ? "default" : "secondary"}>
-                          {position.status.toUpperCase()}
-                        </Badge>
-                        {position.status === "open" && (
-                          <Badge className={`px-3 py-1 font-semibold ${getRiskColor(position.riskLevel)}`}>
-                            {position.leverage}x · {position.riskLevel.toUpperCase()}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-muted-foreground">Updated: {position.lastUpdated}</span>
-                        {position.status === "open" && (
-                          <Dialog
-                            open={closingPosition?.id === position.id}
-                            onOpenChange={(open) => !open && setClosingPosition(null)}
+                  <CardContent className="p-4">
+                    {/* Mobile Header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-bold text-lg">{position.symbol}</h3>
+                          <Badge
+                            variant={position.positionType === "long" ? "default" : "destructive"}
+                            className="text-xs px-2 py-1"
                           >
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={() => setClosingPosition(position)}>
-                                <X className="h-4 w-4 mr-1" />
-                                Close
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Close Position: {position.symbol}</DialogTitle>
-                                <DialogDescription>
-                                  Enter the exit price and details for closing this position
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="exitPrice">Exit Price</Label>
-                                  <Input
-                                    id="exitPrice"
-                                    type="number"
-                                    placeholder="Enter exit price"
-                                    value={closeData.exitPrice}
-                                    onChange={(e) => setCloseData((prev) => ({ ...prev, exitPrice: e.target.value }))}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="closeReason">Close Reason</Label>
-                                  <select
-                                    className="w-full p-2 border rounded-md"
-                                    value={closeData.closeReason}
-                                    onChange={(e) =>
-                                      setCloseData((prev) => ({ ...prev, closeReason: e.target.value as any }))
-                                    }
-                                  >
-                                    <option value="manual">Manual Close</option>
-                                    <option value="take_profit">Take Profit</option>
-                                    <option value="stop_loss">Stop Loss</option>
-                                    <option value="liquidated">Liquidated</option>
-                                  </select>
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="notes">Notes (Optional)</Label>
-                                  <Textarea
-                                    id="notes"
-                                    placeholder="Add any notes about this trade..."
-                                    value={closeData.notes}
-                                    onChange={(e) => setCloseData((prev) => ({ ...prev, notes: e.target.value }))}
-                                  />
-                                </div>
-                                {closeData.exitPrice && (
-                                  <div className="p-3 bg-muted/30 rounded-lg">
-                                    <p className="text-sm font-medium mb-1">Estimated P&L:</p>
-                                    <p
-                                      className={`text-lg font-bold ${
-                                        calculatePnL(position, Number.parseFloat(closeData.exitPrice)).unrealizedPnL >=
-                                        0
-                                          ? "text-green-500"
-                                          : "text-red-500"
-                                      }`}
-                                    >
-                                      {calculatePnL(position, Number.parseFloat(closeData.exitPrice)).unrealizedPnL >= 0
-                                        ? "+"
-                                        : ""}
-                                      $
-                                      {formatPrice(
-                                        Math.abs(
-                                          calculatePnL(position, Number.parseFloat(closeData.exitPrice)).unrealizedPnL,
-                                        ),
-                                      )}
-                                    </p>
-                                  </div>
-                                )}
-                                <div className="flex justify-end space-x-2">
-                                  <Button variant="outline" onClick={() => setClosingPosition(null)}>
-                                    Cancel
-                                  </Button>
-                                  <Button onClick={closePosition}>Close Position</Button>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removePosition(position.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                            {position.positionType === "long" ? (
+                              <>
+                                <TrendingUp className="h-3 w-3 mr-1" />
+                                LONG
+                              </>
+                            ) : (
+                              <>
+                                <TrendingDown className="h-3 w-3 mr-1" />
+                                SHORT
+                              </>
+                            )}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant={position.status === "open" ? "default" : "secondary"} className="text-xs">
+                            {position.status.toUpperCase()}
+                          </Badge>
+                          {position.status === "open" && (
+                            <Badge className={`text-xs px-2 py-1 ${getRiskColor(position.riskLevel)}`}>
+                              {position.leverage}x • {position.riskLevel.toUpperCase()}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Mobile Actions Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="p-2">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {position.status === "open" && (
+                            <DropdownMenuItem onClick={() => setClosingPosition(position)}>
+                              <X className="h-4 w-4 mr-2" />
+                              Close Position
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => removePosition(position.id)} className="text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
-                    {/* Price Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                      <div className="p-3 bg-muted/30 rounded-lg">
-                        <span className="text-sm text-muted-foreground block mb-1">Entry Price</span>
-                        <p className="font-mono font-bold text-lg">${formatPrice(position.entryPrice)}</p>
+                    {/* Mobile Price Grid */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="p-2 bg-muted/30 rounded-lg">
+                        <span className="text-xs text-muted-foreground block mb-1">Entry</span>
+                        <p className="font-mono font-bold text-sm">${formatPrice(position.entryPrice)}</p>
                       </div>
-                      <div className="p-3 bg-muted/30 rounded-lg">
-                        <span className="text-sm text-muted-foreground block mb-1">
-                          {position.status === "open" ? "Current Price" : "Exit Price"}
+                      <div className="p-2 bg-muted/30 rounded-lg">
+                        <span className="text-xs text-muted-foreground block mb-1">
+                          {position.status === "open" ? "Current" : "Exit"}
                         </span>
-                        <p className="font-mono font-bold text-lg">
+                        <p className="font-mono font-bold text-sm">
                           ${formatPrice(position.status === "open" ? position.currentPrice : position.exitPrice || 0)}
                         </p>
                       </div>
                       {position.status === "open" && (
-                        <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                          <span className="text-sm text-muted-foreground block mb-1">Liquidation Price</span>
-                          <p className="font-mono font-bold text-lg text-red-600">
+                        <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                          <span className="text-xs text-muted-foreground block mb-1">Liquidation</span>
+                          <p className="font-mono font-bold text-sm text-red-600">
                             ${formatPrice(position.liquidationPrice)}
                           </p>
                         </div>
                       )}
-                      <div className="p-3 bg-muted/30 rounded-lg">
-                        <span className="text-sm text-muted-foreground block mb-1">Position Size</span>
-                        <p className="font-mono font-bold text-lg">${position.positionSize.toLocaleString()}</p>
+                      <div className="p-2 bg-muted/30 rounded-lg">
+                        <span className="text-xs text-muted-foreground block mb-1">Size</span>
+                        <p className="font-mono font-bold text-sm">${(position.positionSize / 1000).toFixed(1)}k</p>
                       </div>
                     </div>
 
-                    {/* P&L Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {/* Mobile P&L Section */}
+                    <div className="grid grid-cols-1 gap-3 mb-4">
                       <div
-                        className={`p-4 rounded-lg border ${
+                        className={`p-3 rounded-lg border ${
                           showPnL
                             ? position.status === "open"
                               ? position.unrealizedPnL >= 0
@@ -720,11 +637,11 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                             : "bg-muted/30"
                         }`}
                       >
-                        <span className="text-sm text-muted-foreground block mb-2">
+                        <span className="text-xs text-muted-foreground block mb-1">
                           {position.status === "open" ? "Unrealized P&L" : "Realized P&L"}
                         </span>
                         <p
-                          className={`font-bold text-2xl ${
+                          className={`font-bold text-lg ${
                             showPnL
                               ? position.status === "open"
                                 ? position.unrealizedPnL >= 0
@@ -742,9 +659,9 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                                 <>
                                   {position.unrealizedPnL >= 0 ? "+" : ""}$
                                   {formatPrice(Math.abs(position.unrealizedPnL))}
-                                  <span className="text-sm ml-3 opacity-75">
+                                  <span className="text-xs ml-2 opacity-75">
                                     ({position.unrealizedPnLPercentage >= 0 ? "+" : ""}
-                                    {position.unrealizedPnLPercentage.toFixed(2)}%)
+                                    {position.unrealizedPnLPercentage.toFixed(1)}%)
                                   </span>
                                 </>
                               ) : (
@@ -759,20 +676,16 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                           )}
                         </p>
                       </div>
-                      <div className="p-4 bg-muted/30 rounded-lg">
-                        <span className="text-sm text-muted-foreground block mb-2">Margin Used</span>
-                        <p className="font-bold text-2xl">${formatPrice(position.marginUsed)}</p>
-                      </div>
                     </div>
 
                     {/* Risk Progress Bar for Open Positions */}
                     {position.status === "open" && (
-                      <div className="space-y-3 mb-4">
+                      <div className="space-y-2 mb-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-muted-foreground">Distance to Liquidation</span>
-                          <div className="flex items-center space-x-2">
+                          <span className="text-xs font-medium text-muted-foreground">Distance to Liquidation</span>
+                          <div className="flex items-center space-x-1">
                             <span
-                              className={`text-sm font-bold ${
+                              className={`text-xs font-bold ${
                                 position.riskLevel === "critical"
                                   ? "text-red-500"
                                   : position.riskLevel === "high"
@@ -782,17 +695,17 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                                       : "text-green-500"
                               }`}
                             >
-                              {position.distanceToLiquidation.toFixed(2)}%
+                              {position.distanceToLiquidation.toFixed(1)}%
                             </span>
                             {position.riskLevel === "critical" && (
-                              <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />
+                              <AlertTriangle className="h-3 w-3 text-red-500 animate-pulse" />
                             )}
                           </div>
                         </div>
                         <div className="relative">
                           <Progress
                             value={getRiskProgress(position.riskLevel, position.distanceToLiquidation)}
-                            className={`h-3 ${
+                            className={`h-2 ${
                               position.riskLevel === "critical"
                                 ? "bg-red-100"
                                 : position.riskLevel === "high"
@@ -805,12 +718,12 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                           <div className="absolute inset-0 flex items-center justify-center">
                             <span className="text-xs font-semibold text-gray-700">
                               {position.riskLevel === "critical"
-                                ? "DANGER ZONE"
+                                ? "DANGER"
                                 : position.riskLevel === "high"
                                   ? "HIGH RISK"
                                   : position.riskLevel === "medium"
-                                    ? "MEDIUM RISK"
-                                    : "SAFE ZONE"}
+                                    ? "MEDIUM"
+                                    : "SAFE"}
                             </span>
                           </div>
                         </div>
@@ -819,34 +732,24 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
 
                     {/* Closed Position Details */}
                     {position.status === "closed" && (
-                      <div className="space-y-3 mb-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      <div className="space-y-2 mb-4">
+                        <div className="grid grid-cols-2 gap-3 text-xs">
                           <div>
                             <span className="text-muted-foreground">Close Date:</span>
                             <p className="font-medium">{new Date(position.exitDate || "").toLocaleDateString()}</p>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Close Reason:</span>
+                            <span className="text-muted-foreground">Reason:</span>
                             <p className="font-medium capitalize">{position.closeReason?.replace("_", " ")}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Duration:</span>
-                            <p className="font-medium">
-                              {Math.ceil(
-                                (new Date(position.exitDate || "").getTime() - new Date(position.addedAt).getTime()) /
-                                  (1000 * 60 * 60 * 24),
-                              )}{" "}
-                              days
-                            </p>
                           </div>
                         </div>
                         {position.notes && (
-                          <div className="p-3 bg-muted/20 rounded-lg">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">Notes:</span>
+                          <div className="p-2 bg-muted/20 rounded-lg">
+                            <div className="flex items-center space-x-1 mb-1">
+                              <FileText className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs font-medium">Notes:</span>
                             </div>
-                            <p className="text-sm">{position.notes}</p>
+                            <p className="text-xs">{position.notes}</p>
                           </div>
                         )}
                       </div>
@@ -854,60 +757,131 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
 
                     {/* Critical Warning */}
                     {position.status === "open" && position.riskLevel === "critical" && (
-                      <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />
-                          <span className="text-sm text-red-600 dark:text-red-400 font-bold">
-                            IMMEDIATE ACTION REQUIRED: This position may be liquidated very soon!
-                          </span>
+                      <div className="p-2 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg mb-3">
+                        <div className="flex items-center space-x-1">
+                          <AlertTriangle className="h-3 w-3 text-red-500 animate-pulse" />
+                          <span className="text-xs text-red-600 dark:text-red-400 font-bold">LIQUIDATION RISK!</span>
                         </div>
                       </div>
                     )}
 
                     {/* Position Timestamps */}
-                    <div className="mt-4 pt-3 border-t text-xs text-muted-foreground flex items-center space-x-4">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Added: {new Date(position.addedAt).toLocaleDateString()}</span>
-                      </div>
-                      {position.status === "closed" && position.exitDate && (
+                    <div className="pt-2 border-t text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-1">
                           <Calendar className="h-3 w-3" />
-                          <span>Closed: {new Date(position.exitDate).toLocaleDateString()}</span>
+                          <span>Added: {new Date(position.addedAt).toLocaleDateString()}</span>
                         </div>
-                      )}
+                        <span>Updated: {position.lastUpdated}</span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            // Empty State
+            // Empty State - Mobile Optimized
             <Card className="border-dashed border-2">
-              <CardContent className="text-center py-16">
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-muted/50 flex items-center justify-center">
-                  <DollarSign className="h-10 w-10 text-muted-foreground" />
+              <CardContent className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                  <DollarSign className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3">No Positions in Portfolio</h3>
-                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                  Start by calculating positions using the Calculator tab, then add them here to track their performance
-                  with real-time price updates and risk monitoring.
+                <h3 className="text-lg font-semibold mb-2">No Positions</h3>
+                <p className="text-muted-foreground text-sm mb-4 px-4">
+                  Calculate positions using the Calculator tab, then add them here to track performance.
                 </p>
                 {currentPosition && currentResult ? (
-                  <Button onClick={addCurrentPosition} size="lg" className="bg-primary hover:bg-primary/90">
+                  <Button onClick={addCurrentPosition} size="sm" className="w-full max-w-xs">
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Your Calculated Position
+                    Add Your Position
                   </Button>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Go to the Calculator tab and calculate a position first
-                  </p>
+                  <p className="text-xs text-muted-foreground">Go to Calculator and calculate a position first</p>
                 )}
               </CardContent>
             </Card>
           )}
         </CardContent>
       </Card>
+
+      {/* Close Position Dialog - Mobile Optimized */}
+      <Dialog open={closingPosition !== null} onOpenChange={(open) => !open && setClosingPosition(null)}>
+        <DialogContent className="w-[95vw] max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Close Position: {closingPosition?.symbol}</DialogTitle>
+            <DialogDescription className="text-sm">
+              Enter the exit price and details for closing this position
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="exitPrice" className="text-sm">
+                Exit Price
+              </Label>
+              <Input
+                id="exitPrice"
+                type="number"
+                placeholder="Enter exit price"
+                value={closeData.exitPrice}
+                onChange={(e) => setCloseData((prev) => ({ ...prev, exitPrice: e.target.value }))}
+                className="text-base"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="closeReason" className="text-sm">
+                Close Reason
+              </Label>
+              <select
+                className="w-full p-3 border rounded-md text-base"
+                value={closeData.closeReason}
+                onChange={(e) => setCloseData((prev) => ({ ...prev, closeReason: e.target.value as any }))}
+              >
+                <option value="manual">Manual Close</option>
+                <option value="take_profit">Take Profit</option>
+                <option value="stop_loss">Stop Loss</option>
+                <option value="liquidated">Liquidated</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="text-sm">
+                Notes (Optional)
+              </Label>
+              <Textarea
+                id="notes"
+                placeholder="Add any notes about this trade..."
+                value={closeData.notes}
+                onChange={(e) => setCloseData((prev) => ({ ...prev, notes: e.target.value }))}
+                className="text-base min-h-[80px]"
+              />
+            </div>
+            {closeData.exitPrice && closingPosition && (
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-sm font-medium mb-1">Estimated P&L:</p>
+                <p
+                  className={`text-xl font-bold ${
+                    calculatePnL(closingPosition, Number.parseFloat(closeData.exitPrice)).unrealizedPnL >= 0
+                      ? "text-green-500"
+                      : "text-red-500"
+                  }`}
+                >
+                  {calculatePnL(closingPosition, Number.parseFloat(closeData.exitPrice)).unrealizedPnL >= 0 ? "+" : ""}$
+                  {formatPrice(
+                    Math.abs(calculatePnL(closingPosition, Number.parseFloat(closeData.exitPrice)).unrealizedPnL),
+                  )}
+                </p>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setClosingPosition(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={closePosition} className="flex-1">
+                Close Position
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
