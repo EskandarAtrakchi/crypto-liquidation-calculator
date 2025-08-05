@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -60,6 +60,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
   const [showPnL, setShowPnL] = useState(true)
   const [lastUpdateTime, setLastUpdateTime] = useState<string>("")
   const [closingPosition, setClosingPosition] = useState<PortfolioPosition | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [closeData, setCloseData] = useState({
     exitPrice: "",
     notes: "",
@@ -104,7 +105,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
     return () => clearInterval(interval)
   }, [positions])
 
-  const calculatePnL = (position: PortfolioPosition, currentPrice: number) => {
+  const calculatePnL = useCallback((position: PortfolioPosition, currentPrice: number) => {
     const priceChange = currentPrice - position.entryPrice
     const priceChangePercentage = (priceChange / position.entryPrice) * 100
 
@@ -121,103 +122,106 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       unrealizedPnL,
       unrealizedPnLPercentage: leveragedReturn,
     }
-  }
+  }, [])
 
-  const calculateRiskLevel = (
-    position: PortfolioPosition,
-    currentPrice: number,
-  ): "low" | "medium" | "high" | "critical" => {
-    const distanceToLiquidation =
-      position.positionType === "long"
-        ? ((currentPrice - position.liquidationPrice) / currentPrice) * 100
-        : ((position.liquidationPrice - currentPrice) / currentPrice) * 100
+  const calculateRiskLevel = useCallback(
+    (position: PortfolioPosition, currentPrice: number): "low" | "medium" | "high" | "critical" => {
+      const distanceToLiquidation =
+        position.positionType === "long"
+          ? ((currentPrice - position.liquidationPrice) / currentPrice) * 100
+          : ((position.liquidationPrice - currentPrice) / currentPrice) * 100
 
-    if (distanceToLiquidation <= 5) return "critical"
-    if (distanceToLiquidation <= 15) return "high"
-    if (distanceToLiquidation <= 30) return "medium"
-    return "low"
-  }
+      if (distanceToLiquidation <= 5) return "critical"
+      if (distanceToLiquidation <= 15) return "high"
+      if (distanceToLiquidation <= 30) return "medium"
+      return "low"
+    },
+    [],
+  )
 
-  const updateAllPrices = async (positionsToUpdate: PortfolioPosition[]) => {
-    if (isUpdating || positionsToUpdate.length === 0) return
+  const updateAllPrices = useCallback(
+    async (positionsToUpdate: PortfolioPosition[]) => {
+      if (isUpdating || positionsToUpdate.length === 0) return
 
-    setIsUpdating(true)
-    const updateStartTime = new Date().toLocaleTimeString()
+      setIsUpdating(true)
+      const updateStartTime = new Date().toLocaleTimeString()
 
-    try {
-      const updatedPositions = await Promise.all(
-        positionsToUpdate.map(async (position) => {
-          // Skip closed positions
-          if (position.status === "closed") return position
+      try {
+        const updatedPositions = await Promise.all(
+          positionsToUpdate.map(async (position) => {
+            // Skip closed positions
+            if (position.status === "closed") return position
 
-          try {
-            const cryptoData = await fetchCryptoBySymbol(position.symbol)
-            if (cryptoData && cryptoData.quotes?.USD) {
-              const currentPrice = cryptoData.quotes.USD.price
-              const { unrealizedPnL, unrealizedPnLPercentage } = calculatePnL(position, currentPrice)
-              const riskLevel = calculateRiskLevel(position, currentPrice)
+            try {
+              const cryptoData = await fetchCryptoBySymbol(position.symbol)
+              if (cryptoData && cryptoData.quotes?.USD) {
+                const currentPrice = cryptoData.quotes.USD.price
+                const { unrealizedPnL, unrealizedPnLPercentage } = calculatePnL(position, currentPrice)
+                const riskLevel = calculateRiskLevel(position, currentPrice)
 
-              const distanceToLiquidation =
-                position.positionType === "long"
-                  ? ((currentPrice - position.liquidationPrice) / currentPrice) * 100
-                  : ((position.liquidationPrice - currentPrice) / currentPrice) * 100
+                const distanceToLiquidation =
+                  position.positionType === "long"
+                    ? ((currentPrice - position.liquidationPrice) / currentPrice) * 100
+                    : ((position.liquidationPrice - currentPrice) / currentPrice) * 100
 
-              return {
-                ...position,
-                currentPrice,
-                unrealizedPnL,
-                unrealizedPnLPercentage,
-                riskLevel,
-                distanceToLiquidation: Math.max(0, distanceToLiquidation),
-                lastUpdated: new Date().toLocaleTimeString(),
+                return {
+                  ...position,
+                  currentPrice,
+                  unrealizedPnL,
+                  unrealizedPnLPercentage,
+                  riskLevel,
+                  distanceToLiquidation: Math.max(0, distanceToLiquidation),
+                  lastUpdated: new Date().toLocaleTimeString(),
+                }
               }
+              return position
+            } catch (error) {
+              console.error(`Failed to update ${position.symbol}:`, error)
+              return position
             }
-            return position
-          } catch (error) {
-            console.error(`Failed to update ${position.symbol}:`, error)
-            return position
+          }),
+        )
+
+        setPositions(updatedPositions)
+        setLastUpdateTime(updateStartTime)
+
+        // Check for critical positions and alert
+        const criticalPositions = updatedPositions.filter((p) => p.riskLevel === "critical" && p.status === "open")
+        if (criticalPositions.length > 0) {
+          toast({
+            title: "🚨 LIQUIDATION RISK",
+            description: `${criticalPositions.length} position(s) critically close to liquidation!`,
+            variant: "destructive",
+          })
+
+          // Browser notification if available
+          if (Notification.permission === "granted") {
+            new Notification("CRITICAL LIQUIDATION RISK", {
+              body: `${criticalPositions.length} position(s) need immediate attention!`,
+              icon: "/logo-tab.jpg",
+            })
           }
-        }),
-      )
+        }
 
-      setPositions(updatedPositions)
-      setLastUpdateTime(updateStartTime)
-
-      // Check for critical positions and alert
-      const criticalPositions = updatedPositions.filter((p) => p.riskLevel === "critical" && p.status === "open")
-      if (criticalPositions.length > 0) {
         toast({
-          title: "🚨 LIQUIDATION RISK",
-          description: `${criticalPositions.length} position(s) critically close to liquidation!`,
+          title: "✅ Prices Updated",
+          description: `Portfolio updated with latest market prices`,
+        })
+      } catch (error) {
+        console.error("Failed to update prices:", error)
+        toast({
+          title: "❌ Update Failed",
+          description: "Could not fetch latest prices. Please try again.",
           variant: "destructive",
         })
-
-        // Browser notification if available
-        if (Notification.permission === "granted") {
-          new Notification("CRITICAL LIQUIDATION RISK", {
-            body: `${criticalPositions.length} position(s) need immediate attention!`,
-            icon: "/logo-tab.jpg",
-          })
-        }
+      } finally {
+        setIsUpdating(false)
       }
+    },
+    [isUpdating, calculatePnL, calculateRiskLevel, toast],
+  )
 
-      toast({
-        title: "✅ Prices Updated",
-        description: `Portfolio updated with latest market prices`,
-      })
-    } catch (error) {
-      console.error("Failed to update prices:", error)
-      toast({
-        title: "❌ Update Failed",
-        description: "Could not fetch latest prices. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  const addCurrentPosition = () => {
+  const addCurrentPosition = useCallback(() => {
     if (!currentPosition || !currentResult) {
       toast({
         title: "❌ No Position to Add",
@@ -271,9 +275,32 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       title: "✅ Position Added",
       description: `${currentPosition.symbol} ${currentPosition.positionType.toUpperCase()} position added to portfolio`,
     })
-  }
+  }, [currentPosition, currentResult, positions, toast, updateAllPrices])
 
-  const closePosition = () => {
+  const openCloseDialog = useCallback((position: PortfolioPosition) => {
+    setClosingPosition(position)
+    setCloseData({
+      exitPrice: position.currentPrice.toString(),
+      notes: "",
+      closeReason: "manual",
+    })
+    setIsDialogOpen(true)
+  }, [])
+
+  const closeDialog = useCallback(() => {
+    setIsDialogOpen(false)
+    // Add a small delay to ensure dialog is fully closed before clearing state
+    setTimeout(() => {
+      setClosingPosition(null)
+      setCloseData({
+        exitPrice: "",
+        notes: "",
+        closeReason: "manual",
+      })
+    }, 150)
+  }, [])
+
+  const closePosition = useCallback(() => {
     if (!closingPosition || !closeData.exitPrice) {
       toast({
         title: "❌ Invalid Exit Price",
@@ -284,6 +311,15 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
     }
 
     const exitPrice = Number.parseFloat(closeData.exitPrice)
+    if (isNaN(exitPrice) || exitPrice <= 0) {
+      toast({
+        title: "❌ Invalid Exit Price",
+        description: "Please enter a valid positive number for exit price",
+        variant: "destructive",
+      })
+      return
+    }
+
     const { unrealizedPnL } = calculatePnL(closingPosition, exitPrice)
 
     const closedPosition: PortfolioPosition = {
@@ -298,26 +334,33 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
     }
 
     setPositions((prev) => prev.map((pos) => (pos.id === closingPosition.id ? closedPosition : pos)))
-    setClosingPosition(null)
-    setCloseData({ exitPrice: "", notes: "", closeReason: "manual" })
 
-    toast({
-      title: unrealizedPnL >= 0 ? "🎉 Position Closed - Profit!" : "📉 Position Closed - Loss",
-      description: `${closingPosition.symbol} closed with ${unrealizedPnL >= 0 ? "+" : ""}$${formatPrice(Math.abs(unrealizedPnL))} P&L`,
-    })
-  }
+    // Close dialog first
+    closeDialog()
 
-  const removePosition = (id: string) => {
-    const position = positions.find((p) => p.id === id)
-    setPositions((prev) => prev.filter((pos) => pos.id !== id))
+    // Show success toast
+    setTimeout(() => {
+      toast({
+        title: unrealizedPnL >= 0 ? "🎉 Position Closed - Profit!" : "📉 Position Closed - Loss",
+        description: `${closingPosition.symbol} closed with ${unrealizedPnL >= 0 ? "+" : ""}$${formatPrice(Math.abs(unrealizedPnL))} P&L`,
+      })
+    }, 200)
+  }, [closingPosition, closeData, calculatePnL, closeDialog, toast])
 
-    toast({
-      title: "🗑️ Position Removed",
-      description: `${position?.symbol} position removed from portfolio`,
-    })
-  }
+  const removePosition = useCallback(
+    (id: string) => {
+      const position = positions.find((p) => p.id === id)
+      setPositions((prev) => prev.filter((pos) => pos.id !== id))
 
-  const getRiskColor = (level: string) => {
+      toast({
+        title: "🗑️ Position Removed",
+        description: `${position?.symbol} position removed from portfolio`,
+      })
+    },
+    [positions, toast],
+  )
+
+  const getRiskColor = useCallback((level: string) => {
     switch (level) {
       case "low":
         return "text-green-600 bg-green-50 dark:bg-green-900/20 border-green-200"
@@ -330,9 +373,9 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       default:
         return "text-gray-500"
     }
-  }
+  }, [])
 
-  const getRiskProgress = (level: string, distance: number) => {
+  const getRiskProgress = useCallback((level: string, distance: number) => {
     switch (level) {
       case "critical":
         return Math.min((distance / 5) * 100, 100)
@@ -343,7 +386,7 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       default:
         return 100
     }
-  }
+  }, [])
 
   // Calculate portfolio statistics
   const openPositions = positions.filter((p) => p.status === "open")
@@ -575,18 +618,21 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                       {/* Mobile Actions Menu */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="p-2">
+                          <Button variant="ghost" size="sm" className="p-2 h-8 w-8">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="w-48">
                           {position.status === "open" && (
-                            <DropdownMenuItem onClick={() => setClosingPosition(position)}>
+                            <DropdownMenuItem onClick={() => openCloseDialog(position)} className="cursor-pointer">
                               <X className="h-4 w-4 mr-2" />
                               Close Position
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem onClick={() => removePosition(position.id)} className="text-red-600">
+                          <DropdownMenuItem
+                            onClick={() => removePosition(position.id)}
+                            className="text-red-600 cursor-pointer"
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Remove
                           </DropdownMenuItem>
@@ -805,8 +851,8 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
       </Card>
 
       {/* Close Position Dialog - Mobile Optimized */}
-      <Dialog open={closingPosition !== null} onOpenChange={(open) => !open && setClosingPosition(null)}>
-        <DialogContent className="w-[95vw] max-w-md mx-auto">
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg">Close Position: {closingPosition?.symbol}</DialogTitle>
             <DialogDescription className="text-sm">
@@ -821,10 +867,12 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
               <Input
                 id="exitPrice"
                 type="number"
+                step="0.01"
                 placeholder="Enter exit price"
                 value={closeData.exitPrice}
                 onChange={(e) => setCloseData((prev) => ({ ...prev, exitPrice: e.target.value }))}
-                className="text-base"
+                className="text-base h-12"
+                autoComplete="off"
               />
             </div>
             <div className="space-y-2">
@@ -832,7 +880,8 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                 Close Reason
               </Label>
               <select
-                className="w-full p-3 border rounded-md text-base"
+                id="closeReason"
+                className="w-full p-3 border rounded-md text-base h-12 bg-background"
                 value={closeData.closeReason}
                 onChange={(e) => setCloseData((prev) => ({ ...prev, closeReason: e.target.value as any }))}
               >
@@ -851,10 +900,11 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                 placeholder="Add any notes about this trade..."
                 value={closeData.notes}
                 onChange={(e) => setCloseData((prev) => ({ ...prev, notes: e.target.value }))}
-                className="text-base min-h-[80px]"
+                className="text-base min-h-[80px] resize-none"
+                autoComplete="off"
               />
             </div>
-            {closeData.exitPrice && closingPosition && (
+            {closeData.exitPrice && closingPosition && !isNaN(Number.parseFloat(closeData.exitPrice)) && (
               <div className="p-3 bg-muted/30 rounded-lg">
                 <p className="text-sm font-medium mb-1">Estimated P&L:</p>
                 <p
@@ -871,12 +921,16 @@ export function PortfolioTracker({ currentPosition, currentResult }: PortfolioTr
                 </p>
               </div>
             )}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button variant="outline" onClick={() => setClosingPosition(null)} className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={closePosition} className="flex-1">
+            <div className="flex flex-col gap-3 pt-2">
+              <Button
+                onClick={closePosition}
+                className="w-full h-12 text-base font-medium"
+                disabled={!closeData.exitPrice || isNaN(Number.parseFloat(closeData.exitPrice))}
+              >
                 Close Position
+              </Button>
+              <Button variant="outline" onClick={closeDialog} className="w-full h-12 text-base bg-transparent">
+                Cancel
               </Button>
             </div>
           </div>
